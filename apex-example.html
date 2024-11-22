@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexCharts Line Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <style>
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #chart {
+      max-width: 800px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div id="chart"></div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Initial chart configuration
+    const options = {
+      chart: {
+        height: 350,
+        type: 'area',
+        stacked: true,
+        zoom: {
+          enabled: false
+        },
+        animations: {
+          enabled: false
+        }
+      },
+      dataLabels: {
+        enabled: false
+      },
+      stroke: {
+        curve: 'smooth'
+      },
+      markers: {
+        size: 0
+      },
+      title: {
+        text: 'Packets In and Out',
+        align: 'left'
+      },
+      xaxis: {
+        type: 'datetime',
+        labels: {
+          format: 'HH:mm:ss'  // Format time labels
+        }
+      },
+      yaxis: {
+        title: {
+          text: 'Packets'
+        }
+      },
+      series: [
+        {
+          name: 'Packets In',
+          data: []
+        },
+        {
+          name: 'Packets Out',
+          data: []
+        }
+      ]
+    };
+
+    // Create chart instance
+    const chart = new ApexCharts(document.querySelector("#chart"), options);
+    chart.render();
+
+    // Function to generate random data
+    function nextRandomVal(prev, limit, maxStep = 5) {
+      const modifier = Math.round(Math.random() * maxStep * 2 - maxStep);
+      let next = prev + modifier;
+      if (next > limit) {
+        next = limit - maxStep;
+      } else if (next < 0) {
+        next = maxStep;
+      }
+      return next;
+    }
+
+    function generateRuleData(historyLength, interval) {
+      const now = new Date().getTime();
+      const data = [];
+      let packets_in = 50000000;
+      let packets_out = 60000000;
+
+      for (let time_start = now - historyLength; time_start <= now; time_start += interval) {
+        packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+        packets_out = packets_in + nextRandomVal(20000000, 50000000, 2000000);
+        data.push({
+          x: time_start,
+          y: [packets_in, packets_out]
+        });
+      }
+      return data;
+    }
+
+    // Initialize the data
+    let data = generateRuleData(10000 * 1000, 1000);
+
+    // Extract the data points
+    let packetsInData = data.map(d => ({ x: d.x, y: d.y[0] }));
+    let packetsOutData = data.map(d => ({ x: d.x, y: d.y[1] }));
+    
+    // Update the chart series with the generated data
+    chart.updateSeries([
+      {
+        name: 'Packets In',
+        data: data.map(d => ({ x: d.x, y: d.y[0] }))
+      },
+      {
+        name: 'Packets Out',
+        data: data.map(d => ({ x: d.x, y: d.y[1] }))
+      }
+    ]);
+
+    function updateChart() {
+      const interval = 1000;
+      const now = new Date().getTime();
+    
+      let lastTime = packetsInData.length
+        ? packetsInData[packetsInData.length - 1].x
+        : now - interval;
+    
+      let packets_in = packetsInData.length
+        ? packetsInData[packetsInData.length - 1].y
+        : 50000000;
+    
+      let packets_out = packetsOutData.length
+        ? packetsOutData[packetsOutData.length - 1].y
+        : 60000000;
+    
+      for (let i = 0; i < 60; i++) {
+        lastTime += interval;
+        packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+        packets_out = packets_in + nextRandomVal(20000000, 50000000, 2000000);
+    
+        packetsInData.push({ x: lastTime, y: packets_in });
+        packetsOutData.push({ x: lastTime, y: packets_out });
+      }
+    
+      chart.updateSeries([
+        { name: 'Packets In', data: packetsInData },
+        { name: 'Packets Out', data: packetsOutData },
+      ]);
+    }
+        
+
+    setInterval(updateChart, 1000);
+  });
+</script>
+
+</body>
+</html>

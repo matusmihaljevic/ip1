@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Plotly</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div id="chart-container"></div>
+    <span id="render-time"></span>
+  </div>
+  <script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function () {
+
+      function nextRandomVal(prev, limit, maxStep = 5) {
+        const modifier = Math.round(Math.random() * maxStep * 2 - maxStep);
+        let next = prev + modifier;
+        if (next > limit) {
+          next = limit - maxStep;
+        } else if (next < 0) {
+          next = maxStep;
+        }
+        return next;
+      }
+
+      function generateInitialData(historyLength, interval) {
+        const now = new Date().getTime();
+        const data = [];
+        let packets_in = 50000000;
+        let packets_out = 60000000;
+
+        for (let time = now - historyLength; time <= now; time += interval) {
+          packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+          packets_out = packets_in + nextRandomVal(20000000, 50000000, 2000000);
+          data.push({
+            time_start: new Date(time).toISOString(),
+            packets_in,
+            packets_out,
+          });
+        }
+        return data;
+      }
+
+      const historyLength = 10000 * 1000
+      const interval = 1000;
+      const initialData = generateInitialData(historyLength, interval);
+
+      const time = initialData.map((d) => d.time_start);
+      const packets_in = initialData.map((d) => d.packets_in);
+      const packets_out = initialData.map((d) => d.packets_out);
+
+      const layout = {
+        xaxis: { title: "Time" },
+        yaxis: { title: "Packets" },
+        margin: { t: 40 },
+        showlegend: true,
+      };
+
+      const chartDiv = document.createElement("div");
+      chartDiv.style.width = "100%";
+      chartDiv.style.height = "300px";
+      document.getElementById("chart-container").appendChild(chartDiv);
+
+      const renderTimeElement = document.getElementById("render-time");
+      
+      const startTime = performance.now();
+
+      Plotly.newPlot(chartDiv, [
+        {
+          x: time,
+          y: packets_in,
+          type: "scatter",
+          mode: "lines",
+          name: "Packets In",
+          line: { color: "orange" },
+        },
+        {
+          x: time,
+          y: packets_out,
+          type: "scatter",
+          mode: "lines",
+          name: "Packets Out",
+          line: { color: "green" },
+        },
+      ], layout).then(function() {
+        const renderTime = performance.now() - startTime;
+        renderTimeElement.innerText = `${renderTime.toFixed(2)}ms`;
+      });
+      
+      function updateChart() {
+        const chartData = chartDiv.data;
+        const lastTraceX = chartData[0].x;
+        const lastTraceYIn = chartData[0].y;
+        const lastTraceYOut = chartData[1].y;
+    
+        const lastTime = new Date(lastTraceX[lastTraceX.length - 1]).getTime();
+    
+        let packets_in = lastTraceYIn[lastTraceYIn.length - 1];
+        let packets_out = lastTraceYOut[lastTraceYOut.length - 1];
+        const newTimes = [];
+        const newPacketsIn = [];
+        const newPacketsOut = [];
+    
+        for (let i = 0; i < 60; i++) {
+            const nextTime = new Date(lastTime + (i + 1) * interval).toISOString();
+            packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+            packets_out = packets_in + nextRandomVal(20000000, 50000000, 2000000);
+    
+            newTimes.push(nextTime);
+            newPacketsIn.push(packets_in);
+            newPacketsOut.push(packets_out);
+        }
+    
+        const updatedX = lastTraceX.concat(newTimes);
+        const updatedYIn = lastTraceYIn.concat(newPacketsIn);
+        const updatedYOut = lastTraceYOut.concat(newPacketsOut);
+    
+        Plotly.react(chartDiv, [
+            { x: updatedX, y: updatedYIn, name: 'Packets In', type: 'scatter', mode: 'lines', line: { color: 'orange' } },
+            { x: updatedX, y: updatedYOut, name: 'Packets Out', type: 'scatter', mode: 'lines', line: { color: 'green' } },
+        ]);
+      }    
+
+      setInterval(updateChart, 1000);
+
+    });
+  </script>
+</body>
+</html>
+

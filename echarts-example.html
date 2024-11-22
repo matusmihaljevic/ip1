@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ECharts</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="container">
+      <div id="chart-container"></div>
+    </div>
+    <script type="text/javascript">
+      const chartContainer = document.getElementById("chart-container");
+      function nextRandomVal(prev, limit, maxStep = 5) {
+        const modifier = Math.round(Math.random() * maxStep * 2 - maxStep);
+        let next = prev + modifier;
+        if (next > limit) {
+          next = limit - maxStep;
+        } else if (next < 0) {
+          next = maxStep;
+        }
+        return next;
+      }
+      
+      function generateRuleData(historyLength, interval) {
+        const now = new Date().getTime();
+        const data = [];
+        let packets_in = 50000000;
+        let packets_out = 60000000;
+
+        for (let time = now - historyLength; time <= now; time += interval) {
+          packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+          packets_out = packets_in + nextRandomVal(2000000, 50000000, 2000000);
+          data.push({
+            time_start: new Date(time).toISOString(),
+            packets_in,
+            packets_out,
+          });
+        }
+        return data;
+      }
+      
+      function createChartOption(data) {
+        return {
+          dataset: { source: data },
+          animation: false,
+          xAxis: { type: 'time', name: 'Time' },
+          yAxis: { name: 'Packets' },
+          dataZoom: [
+          {
+            type: 'inside',
+            start: 0,
+            end: 100
+          },
+          {
+            start: 0,
+            end: 100
+          }
+        ],            
+        series: [
+            {
+              type: 'line',
+              encode: { x: 'time_start', y: 'packets_in' },
+              name: 'Packets In',
+              itemStyle: { color: 'orange' },
+              symbol: 'none',
+            },
+            {
+              type: 'line',
+              encode: { x: 'time_start', y: 'packets_out' },
+              name: 'Packets Out',
+              itemStyle: { color: 'green' },
+              symbol: 'none',
+            }
+          ]
+        };
+      }
+
+      const totalCharts = 1
+      const charts = []; // Array to store each chart instance
+      
+      function renderChartsSequentially() {
+        for (let i = 0; i < totalCharts; i++) {
+          renderChart(i);
+        }
+      }
+      
+      function renderChart(index) {
+        let first = true;
+        const chartDiv = document.createElement("div");
+        chartDiv.setAttribute("id", "chart" + index);
+        chartDiv.style.width = "100%";
+        chartDiv.style.height = "300px";
+        chartContainer.appendChild(chartDiv);
+      
+        let renderTimeElement = document.createElement("span");
+        chartContainer.appendChild(renderTimeElement);
+      
+        const myChart = echarts.init(chartDiv, null);
+        const startTime = performance.now();
+      
+        // Set initial chart options
+        myChart.setOption(createChartOption(generateRuleData(100000 * 1000, 1000)), { lazyUpdate: true });
+        
+        myChart.on('rendered', function () {
+            if(first) {
+            let renderTime = performance.now() - startTime;
+            renderTimeElement.innerText = renderTime + 'ms';
+            first = false;
+          }
+        });
+      
+        // Store chart instance in the array
+        charts.push(myChart);
+      }
+      
+      function updateAllCharts() {
+        const now = new Date().getTime();
+        const interval = 1000; // Interval between generated data points in milliseconds
+        const dataPoints = 60; // Number of data points to add each second
+        
+        charts.forEach((myChart) => {
+          let option = myChart.getOption();
+          let lastData = option.dataset[0].source[option.dataset[0].source.length - 1];
+          let lastTime = new Date(lastData.time_start).getTime(); // Extract the last data's time
+      
+          let packets_in = lastData.packets_in;
+          let packets_out = lastData.packets_out;
+      
+          const newData = [];
+          for (let i = 0; i < dataPoints; i++) {
+            lastTime += interval; // Increment time by the interval
+            packets_in = nextRandomVal(packets_in, 148000000, 1000000);
+            packets_out = packets_in + nextRandomVal(2000000, 50000000, 2000000);
+            newData.push({
+              time_start: new Date(lastTime).toISOString(),
+              packets_in,
+              packets_out,
+            });
+          }
+      
+          myChart.setOption({
+            dataset: {
+              source: option.dataset[0].source.concat(newData),
+            },
+          });
+        });
+
+      }
+
+      renderChartsSequentially()
+      setInterval(updateAllCharts, 1000)
+    </script>
+  </body>
+</html>
